@@ -13,11 +13,9 @@
 #pragma once
 
 #include "NoiseGenerator.h"
-
-// Additional DSP modules will be added here
-// - OscillatorBank.h
-// - ResonanceSystem.h
-// - DistortionStage.h
-// - SizeScaler.h
-// - ModulationSystem.h
-// - GrowlProcessor.h
+#include "OscillatorBank.h"
+#include "ResonanceSystem.h"
+#include "DistortionStage.h"
+#include "SizeScaler.h"
+#include "ModulationSystem.h"
+#include "GrowlProcessor.h"

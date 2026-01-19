@@ -50,12 +50,11 @@ public:
         sampleRate = newSampleRate;
 
         // Prepare DSP modules
-        // NOTE: These calls will be implemented once the DSP modules are ready
-        // sizeScaler.prepare (sampleRate);
-        // noiseGenerator.prepare (sampleRate);
-        // oscillatorBank.prepare (sampleRate);
-        // resonanceSystem.prepare (sampleRate);
-        // distortionStage.prepare (sampleRate);
+        sizeScaler.prepare (sampleRate);
+        noiseGenerator.prepare (sampleRate);
+        oscillatorBank.prepare (sampleRate);
+        resonanceSystem.prepare (sampleRate);
+        distortionStage.prepare (sampleRate);
 
         juce::ignoreUnused (samplesPerBlock);
     }
@@ -76,13 +75,62 @@ public:
         for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
             buffer.clear (i, 0, buffer.getNumSamples());
 
-        // DSP Pipeline:
-        // This is a placeholder showing the intended signal flow
-        // Once DSP modules are integrated, this will process audio through:
-        // 1. NoiseGenerator -> 2. OscillatorBank -> 3. Mix -> 4. ResonanceSystem -> 5. DistortionStage
+        // DSP Pipeline: NoiseGenerator -> OscillatorBank -> Mix -> ResonanceSystem -> DistortionStage
+        auto numSamples = buffer.getNumSamples();
 
-        // For now, just clear the buffer (silent until DSP is integrated)
-        buffer.clear();
+        // Process MIDI for note triggers
+        for (const auto metadata : midiMessages)
+        {
+            const auto message = metadata.getMessage();
+            if (message.isNoteOn())
+            {
+                // Trigger oscillator bank with MIDI note
+                auto midiNote = message.getNoteNumber();
+                auto frequency = 440.0 * std::pow(2.0, (midiNote - 69) / 12.0);
+                oscillatorBank.setFrequency(frequency);
+                oscillatorBank.setGate(true);
+            }
+            else if (message.isNoteOff())
+            {
+                oscillatorBank.setGate(false);
+            }
+        }
+
+        // Get output channel (mono to stereo)
+        auto* outputLeft = buffer.getWritePointer(0);
+        auto* outputRight = buffer.getWritePointer(1);
+
+        // Process each sample
+        for (int sample = 0; sample < numSamples; ++sample)
+        {
+            // 1. Generate noise component
+            float noise = noiseGenerator.process();
+
+            // 2. Generate oscillator component
+            float oscillator = oscillatorBank.process();
+
+            // 3. Mix noise and oscillators based on preset
+            float mixed = (noise * (1.0f - currentPreset.oscillatorMix)) +
+                         (oscillator * currentPreset.oscillatorMix);
+
+            // 4. Apply resonance system (formants)
+            float resonant = resonanceSystem.process(mixed);
+
+            // 5. Apply distortion
+            float distorted = distortionStage.process(resonant);
+
+            // 6. Apply master gain
+            float output = distorted * currentPreset.masterGain;
+
+            // Write to output buffer (mono to stereo)
+            outputLeft[sample] = output;
+            if (totalNumOutputChannels > 1)
+                outputRight[sample] = output;
+        }
+
+        // Clear remaining channels if any
+        for (int channel = 2; channel < totalNumOutputChannels; ++channel)
+            buffer.clear(channel, 0, numSamples);
     }
 
     //==============================================================================
@@ -210,46 +258,42 @@ private:
     void applyPresetToDSP()
     {
         // 1. Apply size scaling
-        // sizeScaler.setSizeFeet (currentPreset.sizeFeet);
-        // sizeScaler.setScalingType (Growl::DSP::SizeScaler::Allometric);
+        sizeScaler.setSizeFeet (currentPreset.sizeFeet);
+        sizeScaler.setScalingType (Growl::DSP::SizeScaler::Allometric);
 
         // 2. Apply noise settings
-        // noiseGenerator.setType (static_cast<int> (currentPreset.noiseType));
-        // noiseGenerator.setMix (currentPreset.noiseMix);
+        noiseGenerator.setType (static_cast<int> (currentPreset.noiseType));
+        noiseGenerator.setMix (currentPreset.noiseMix);
 
         // 3. Apply oscillator settings
-        // oscillatorBank.setType (static_cast<int> (currentPreset.oscillatorType));
-        // oscillatorBank.setDetune (currentPreset.oscillatorDetune);
-        // oscillatorBank.setMix (currentPreset.oscillatorMix);
+        oscillatorBank.setType (static_cast<int> (currentPreset.oscillatorType));
+        oscillatorBank.setDetune (currentPreset.oscillatorDetune);
+        oscillatorBank.setMix (currentPreset.oscillatorMix);
 
         // 4. Apply formant settings (with size scaling)
-        // auto formantMult = sizeScaler.getFormantMultiplier();
-        // for (int i = 0; i < 5; ++i)
-        // {
-        //     auto scaledFreq = currentPreset.formantFreqs[i] * formantMult;
-        //     resonanceSystem.setFormant (i, scaledFreq, currentPreset.formantQs[i]);
-        // }
-        // resonanceSystem.setChestResonance (currentPreset.chestResonance);
-        // resonanceSystem.setThroatResonance (currentPreset.throatResonance);
-        // resonanceSystem.setMix (currentPreset.resonanceMix);
+        auto formantMult = sizeScaler.getFormantMultiplier();
+        for (int i = 0; i < 5; ++i)
+        {
+            auto scaledFreq = currentPreset.formantFreqs[i] * formantMult;
+            resonanceSystem.setFormant (i, scaledFreq, currentPreset.formantQs[i]);
+        }
+        resonanceSystem.setChestResonance (currentPreset.chestResonance);
+        resonanceSystem.setThroatResonance (currentPreset.throatResonance);
+        resonanceSystem.setMix (currentPreset.resonanceMix);
 
         // 5. Apply distortion settings
-        // distortionStage.setType (static_cast<int> (currentPreset.distortionType));
-        // distortionStage.setDrive (currentPreset.drive);
-        // distortionStage.setTone (currentPreset.tone);
-
-        // NOTE: These calls are commented out until DSP modules are fully integrated
-        // The structure shows how presets will be applied once modules are ready
-        juce::ignoreUnused (currentPreset);
+        distortionStage.setType (static_cast<int> (currentPreset.distortionType));
+        distortionStage.setDrive (currentPreset.drive);
+        distortionStage.setTone (currentPreset.tone);
     }
 
     //==============================================================================
-    // DSP module instances (will be fully integrated once modules are complete)
-    // Growl::DSP::SizeScaler sizeScaler;
-    // Growl::DSP::NoiseGenerator noiseGenerator;
-    // Growl::DSP::OscillatorBank oscillatorBank;
-    // Growl::DSP::ResonanceSystem resonanceSystem;
-    // Growl::DSP::DistortionStage distortionStage;
+    // DSP module instances - fully integrated
+    Growl::DSP::SizeScaler sizeScaler;
+    Growl::DSP::NoiseGenerator noiseGenerator;
+    Growl::DSP::OscillatorBank oscillatorBank;
+    Growl::DSP::ResonanceSystem resonanceSystem;
+    Growl::DSP::DistortionStage distortionStage;
 
     // Preset management
     std::vector<PresetParameters> factoryPresets;

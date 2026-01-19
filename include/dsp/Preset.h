@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_data_structures/juce_data_structures.h>
 #include <string>
 
 //==============================================================================
@@ -230,8 +230,8 @@ struct PresetParameters
     {
         juce::ValueTree preset ("preset");
 
-        preset.setProperty ("animalName", animalName, nullptr);
-        preset.setProperty ("presetName", presetName, nullptr);
+        preset.setProperty ("animalName", juce::String (animalName), nullptr);
+        preset.setProperty ("presetName", juce::String (presetName), nullptr);
         preset.setProperty ("sizeFeet", sizeFeet, nullptr);
         preset.setProperty ("noiseType", noiseTypeToString (noiseType), nullptr);
         preset.setProperty ("noiseMix", noiseMix, nullptr);

@@ -88,6 +88,7 @@ target_link_libraries(growl_dsp
     PRIVATE
         juce::juce_audio_basics
         juce::juce_dsp
+        juce::juce_data_structures
 )
 
 target_include_directories(growl_dsp

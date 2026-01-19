@@ -19,3 +19,4 @@
 #include "SizeScaler.h"
 #include "ModulationSystem.h"
 #include "GrowlProcessor.h"
+#include "Preset.h"

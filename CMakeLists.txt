@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 3.15)
 project(growl VERSION 1.0.0)
 
+#==============================================================================
+# MANDATORY: Use centralized JUCE detection
+#==============================================================================
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake")
+include(FindJUCE)
+
+if(NOT JUCE_FOUND)
+    message(FATAL_ERROR "JUCE is required but was not found. See juce_backend/cmake/FindJUCE.cmake for installation instructions.")
+endif()
+
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -25,6 +36,7 @@ set(JUCE_FORMATS
 # Plugin source files
 set(PLUGIN_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/GrowlPlugin.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/FactoryPresets.cpp
 )
 
 # Create the plugin with all formats
@@ -60,7 +72,16 @@ target_include_directories(growl
 # DSP-only target for testing (no AudioProcessor wrapper)
 add_library(growl_dsp STATIC
     include/dsp/NoiseGenerator.h
+    include/dsp/OscillatorBank.h
+    include/dsp/ResonanceSystem.h
+    include/dsp/DistortionStage.h
+    include/dsp/SizeScaler.h
+    include/dsp/ModulationSystem.h
+    include/dsp/GrowlProcessor.h
+    include/dsp/Preset.h
+    include/dsp/FactoryPresets.h
     include/dsp/GrowlDSP.h
+    src/FactoryPresets.cpp
 )
 
 target_link_libraries(growl_dsp
